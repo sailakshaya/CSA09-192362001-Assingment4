@@ -1,0 +1,226 @@
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+ 
+public class DBConnection {
+    private static final String URL =
+        "jdbc:mysql://localhost:3306/campus_events";
+    private static final String USER = "root";
+    private static final String PASSWORD = "your_password";
+ 
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+}
+
+RegistrationDAO.java
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+ 
+public class RegistrationDAO {
+    public void insert(String studentId, String name,
+                       String email, int eventId) throws SQLException {
+        String sql = "INSERT INTO registrations" +
+            "(student_id, student_name, email, event_id) VALUES (?, ?, ?, ?)";
+        try (Connection c = DBConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, studentId);
+            ps.setString(2, name);
+            ps.setString(3, email);
+            ps.setInt(4, eventId);
+            ps.executeUpdate();
+        }
+    }
+ 
+    public List<String[]> findByEvent(Integer eventId) throws SQLException {
+        String sql = "SELECT r.registration_id, r.student_id, " +
+            "r.student_name, e.event_name, r.registered_at " +
+            "FROM registrations r JOIN events e ON r.event_id=e.event_id " +
+            (eventId == null ? "ORDER BY r.registration_id" :
+             "WHERE r.event_id=? ORDER BY r.registration_id");
+        List<String[]> rows = new ArrayList<>();
+        try (Connection c = DBConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            if (eventId != null) ps.setInt(1, eventId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new String[] {
+                        rs.getString("registration_id"),
+                        rs.getString("student_id"),
+                        rs.getString("student_name"),
+                        rs.getString("event_name"),
+                        rs.getString("registered_at")
+                    });
+                }
+            }
+        }
+        return rows;
+    }
+}
+
+RegistrationService.java
+import java.sql.SQLException;
+import java.util.List;
+ 
+public class RegistrationService {
+    private final RegistrationDAO dao = new RegistrationDAO();
+ 
+    public void register(String id, String name,
+                         String email, int eventId)
+                         throws Exception {
+        if (id == null || id.trim().isEmpty())
+            throw new IllegalArgumentException("Student ID is required.");
+        if (name == null || name.trim().isEmpty())
+            throw new IllegalArgumentException("Student name is required.");
+        if (email == null ||
+            !email.trim().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"))
+            throw new IllegalArgumentException("Enter a valid email address.");
+        if (eventId <= 0)
+            throw new IllegalArgumentException("Select an event.");
+ 
+        try {
+            dao.insert(id.trim(), name.trim(), email.trim(), eventId);
+        } catch (SQLException ex) {
+            // MySQL duplicate key error code is commonly 1062.
+            if (ex.getErrorCode() == 1062)
+                throw new IllegalStateException(
+                    "This student is already registered for this event.");
+            throw ex;
+        }
+    }
+ 
+    public List<String[]> getRegistrations(Integer eventId)
+            throws SQLException {
+        return dao.findByEvent(eventId);
+    }
+}
+
+RegistrationFrame.java – Swing form with background insert
+import javax.swing.*;
+import java.awt.*;
+ 
+public class RegistrationFrame extends JFrame {
+    private final JTextField studentId = new JTextField(18);
+    private final JTextField studentName = new JTextField(18);
+    private final JTextField email = new JTextField(18);
+    private final JComboBox<EventItem> event =
+        new JComboBox<>(new EventItem[] {
+            new EventItem(1, "CodeFest"),
+            new EventItem(2, "Cultural Night"),
+            new EventItem(3, "Tech Symposium")
+        });
+    private final JButton register = new JButton("Register");
+    private final JLabel status = new JLabel("Enter registration details.");
+    private final RegistrationService service = new RegistrationService();
+ 
+    public RegistrationFrame() {
+        super("Campus Event Registration");
+        setLayout(new BorderLayout(8, 8));
+ 
+        JMenuBar bar = new JMenuBar();
+        JMenu file = new JMenu("File");
+        JMenuItem exit = new JMenuItem("Exit");
+        exit.addActionListener(e -> {
+            int answer = JOptionPane.showConfirmDialog(this,
+                "Close the application?", "Confirm",
+                JOptionPane.YES_NO_OPTION);
+            if (answer == JOptionPane.YES_OPTION) dispose();
+        });
+        file.add(exit);
+        JMenu help = new JMenu("Help");
+        JMenuItem about = new JMenuItem("About");
+        about.addActionListener(e -> JOptionPane.showMessageDialog(this,
+            "Campus Event Registration", "About",
+            JOptionPane.INFORMATION_MESSAGE));
+        help.add(about);
+        bar.add(file); bar.add(help);
+        setJMenuBar(bar);
+ 
+        JPanel form = new JPanel(new GridLayout(4, 2, 8, 8));
+        form.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        form.add(new JLabel("Student ID")); form.add(studentId);
+        form.add(new JLabel("Student Name")); form.add(studentName);
+        form.add(new JLabel("Email")); form.add(email);
+        form.add(new JLabel("Event")); form.add(event);
+ 
+        JPanel actions = new JPanel(new FlowLayout());
+        JButton clear = new JButton("Clear");
+        actions.add(register); actions.add(clear);
+ 
+        add(form, BorderLayout.CENTER);
+        add(actions, BorderLayout.SOUTH);
+        add(status, BorderLayout.PAGE_END);
+ 
+        register.addActionListener(e -> submitRegistration());
+        clear.addActionListener(e -> clearForm());
+ 
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                if (register.isEnabled()) dispose();
+                else JOptionPane.showMessageDialog(RegistrationFrame.this,
+                    "Please wait for the registration to finish.");
+            }
+        });
+        setSize(460, 300);
+        setLocationRelativeTo(null);
+    }
+ 
+    private void submitRegistration() {
+        EventItem selected = (EventItem) event.getSelectedItem();
+        if (selected == null) {
+            status.setText("Select an event.");
+            return;
+        }
+        register.setEnabled(false);
+        status.setText("Saving registration...");
+ 
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            private Exception failure;
+            @Override protected Void doInBackground() {
+                try {
+                    service.register(studentId.getText(),
+                        studentName.getText(), email.getText(),
+                        selected.id);
+                } catch (Exception ex) { failure = ex; }
+                return null;
+            }
+            @Override protected void done() {
+                register.setEnabled(true);
+                if (failure == null) {
+                    status.setText("Registration successful.");
+                    JOptionPane.showMessageDialog(RegistrationFrame.this,
+                        "Registration completed successfully.");
+                    clearForm();
+                } else {
+                    status.setText("Registration was not completed.");
+                    JOptionPane.showMessageDialog(RegistrationFrame.this,
+                        failure.getMessage(), "Registration Error",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
+    }
+ 
+    private void clearForm() {
+        studentId.setText("");
+        studentName.setText("");
+        email.setText("");
+        event.setSelectedIndex(0);
+        status.setText("Form cleared.");
+    }
+ 
+    private static class EventItem {
+        final int id;
+        final String name;
+        EventItem(int id, String name) { this.id = id; this.name = name; }
+        public String toString() { return name; }
+    }
+ 
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() ->
+            new RegistrationFrame().setVisible(true));
+    }
+}
