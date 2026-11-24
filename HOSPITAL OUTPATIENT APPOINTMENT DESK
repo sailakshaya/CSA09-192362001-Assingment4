@@ -1,0 +1,47 @@
+(a) Refresh the doctor list
+PROCEDURE refreshDoctors
+    selectedDepartment ← departmentCombo.getSelectedItem()
+    doctorCombo.removeAllItems()
+ 
+    IF selectedDepartment IS null THEN
+        doctorCombo.setEnabled(false)
+        RETURN
+    END IF
+ 
+    doctorList ← doctorMap.get(selectedDepartment)
+ 
+    FOR EACH doctor IN doctorList
+        doctorCombo.addItem(doctor.name)
+    END FOR
+ 
+    doctorCombo.setEnabled(doctorList IS NOT EMPTY)
+END PROCEDURE
+
+(b) Validate and book appointment
+PROCEDURE bookAppointment
+    patient ← TRIM(patientIdField.getText())
+    department ← departmentCombo.getSelectedItem()
+    doctor ← doctorCombo.getSelectedItem()
+    slot ← slotCombo.getSelectedItem()
+ 
+    IF patient IS EMPTY THEN
+        showError("Enter patient ID")
+        RETURN
+    END IF
+    IF department OR doctor OR slot IS null THEN
+        showError("Select department, doctor and time slot")
+        RETURN
+    END IF
+ 
+    IF bookingAlreadyExists(patient, slot) THEN
+        showError("Appointment already exists")
+        RETURN
+    END IF
+ 
+    result ← appointmentService.book(patient, department, doctor, slot)
+    IF result IS SUCCESS THEN
+        showConfirmation("Appointment booked")
+    ELSE
+        showError(result.message)
+    END IF
+END PROCEDURE
