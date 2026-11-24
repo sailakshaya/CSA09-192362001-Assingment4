@@ -1,0 +1,164 @@
+(a) Frame implements ActionListener
+import java.awt.*;
+import java.awt.event.*;
+ 
+public class ConverterFrameListener extends Frame implements ActionListener {
+    TextField amount = new TextField(10);
+    Choice target = new Choice();
+    Label result = new Label(" ");
+    Button convert = new Button("Convert");
+ 
+    public ConverterFrameListener() {
+        super("Currency Converter");
+        setLayout(new FlowLayout());
+        target.add("USD"); target.add("EUR");
+        add(new Label("INR")); add(amount); add(target); add(convert); add(result);
+        convert.addActionListener(this);
+        amount.addActionListener(this);
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) { dispose(); }
+        });
+        setSize(350, 140);
+    }
+ 
+    public void actionPerformed(ActionEvent e) {
+        try {
+            double value = Double.parseDouble(amount.getText().trim());
+            double rate = target.getSelectedItem().equals("USD") ? 0.012 : 0.011;
+            result.setText(String.format("%.2f", value * rate));
+            if (e.getSource() == amount)
+                java.awt.Toolkit.getDefaultToolkit().beep();
+        } catch (NumberFormatException ex) {
+            result.setText("Invalid amount");
+        }
+    }
+ 
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            ConverterFrameListener f = new ConverterFrameListener();
+            f.setVisible(true);
+        });
+    }
+}
+
+(b) Named inner class
+import java.awt.*;
+import java.awt.event.*;
+ 
+public class ConverterNamedInner extends Frame {
+    TextField amount = new TextField(10);
+    Choice target = new Choice();
+    Label result = new Label(" ");
+    Button convert = new Button("Convert");
+ 
+    private class ConvertHandler implements ActionListener {
+        public void actionPerformed(ActionEvent e) { convertAmount(); }
+    }
+ 
+    private void convertAmount() {
+        try {
+            double value = Double.parseDouble(amount.getText().trim());
+            double rate = target.getSelectedItem().equals("USD") ? 0.012 : 0.011;
+            result.setText(String.format("%.2f", value * rate));
+        } catch (NumberFormatException ex) {
+            result.setText("Invalid amount");
+        }
+    }
+ 
+    public ConverterNamedInner() {
+        super("Currency Converter");
+        setLayout(new FlowLayout());
+        target.add("USD"); target.add("EUR");
+        add(new Label("INR")); add(amount); add(target); add(convert); add(result);
+        ConvertHandler handler = new ConvertHandler();
+        convert.addActionListener(handler);
+        amount.addActionListener(handler);
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) { dispose(); }
+        });
+        setSize(350, 140);
+    }
+ 
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> new ConverterNamedInner().setVisible(true));
+    }
+}
+
+(c) Anonymous inner class
+import java.awt.*;
+import java.awt.event.*;
+ 
+public class ConverterAnonymous extends Frame {
+    TextField amount = new TextField(10);
+    Choice target = new Choice();
+    Label result = new Label(" ");
+    Button convert = new Button("Convert");
+ 
+    public ConverterAnonymous() {
+        super("Currency Converter");
+        setLayout(new FlowLayout());
+        target.add("USD"); target.add("EUR");
+        add(new Label("INR")); add(amount); add(target); add(convert); add(result);
+ 
+        ActionListener handler = new ActionListener() {
+            @Override public void actionPerformed(ActionEvent e) {
+                try {
+                    double value = Double.parseDouble(amount.getText().trim());
+                    double rate = target.getSelectedItem().equals("USD") ? 0.012 : 0.011;
+                    result.setText(String.format("%.2f", value * rate));
+                } catch (NumberFormatException ex) {
+                    result.setText("Invalid amount");
+                }
+            }
+        };
+        convert.addActionListener(handler);
+        amount.addActionListener(handler);
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) { dispose(); }
+        });
+        setSize(350, 140);
+    }
+ 
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> new ConverterAnonymous().setVisible(true));
+    }
+}
+
+(d) Lambda expression
+import java.awt.*;
+import java.awt.event.*;
+ 
+public class ConverterLambda extends Frame {
+    TextField amount = new TextField(10);
+    Choice target = new Choice();
+    Label result = new Label(" ");
+    Button convert = new Button("Convert");
+ 
+    private void convertAmount() {
+        try {
+            double value = Double.parseDouble(amount.getText().trim());
+            double rate = target.getSelectedItem().equals("USD") ? 0.012 : 0.011;
+            result.setText(String.format("%.2f", value * rate));
+        } catch (NumberFormatException ex) {
+            result.setText("Invalid amount");
+        }
+    }
+ 
+    public ConverterLambda() {
+        super("Currency Converter");
+        setLayout(new FlowLayout());
+        target.add("USD"); target.add("EUR");
+        add(new Label("INR")); add(amount); add(target); add(convert); add(result);
+        ActionListener handler = e -> convertAmount();
+        convert.addActionListener(handler);
+        amount.addActionListener(handler);
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) { dispose(); }
+        });
+        setSize(350, 140);
+    }
+ 
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> new ConverterLambda().setVisible(true));
+    }
+}
