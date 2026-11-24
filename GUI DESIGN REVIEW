@@ -1,0 +1,107 @@
+Proposed class structure
+FeeWindow
+  - TextField regNo, amount
+  - Button pay, clear, receipt
+  - showMessage()
+  - action listeners
+          |
+          v
+FeeService
+  - validate(regNo, amount)
+  - payFee(regNo, amount)
+  - createReceipt(regNo)
+          |
+          v
+FeeRepository (database layer)
+  - insertPayment(...)
+  - findPayment(...)
+
+FeeService.java
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+ 
+public class FeeService {
+    private static final String URL = "jdbc:mysql://localhost:3306/college";
+    private static final String USER = "root";
+    private static final String PWD = "your_password";
+ 
+    public String payFee(String regNo, String amountText) {
+        if (regNo == null || regNo.trim().isEmpty())
+            return "Enter a registration number.";
+ 
+        final double amount;
+        try {
+            amount = Double.parseDouble(amountText.trim());
+        } catch (Exception ex) {
+            return "Enter a valid numeric amount.";
+        }
+ 
+        if (amount <= 0)
+            return "Amount must be greater than zero.";
+ 
+        String sql = "INSERT INTO fees(reg_no, amount) VALUES (?, ?)";
+        try (Connection c = DriverManager.getConnection(URL, USER, PWD);
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, regNo.trim());
+            ps.setDouble(2, amount);
+            int rows = ps.executeUpdate();
+            return rows == 1 ? "Payment recorded successfully." :
+                               "Payment could not be recorded.";
+        } catch (SQLException ex) {
+            return "Database error: " + ex.getMessage();
+        }
+    }
+}
+
+FeeWindow.java – event handling
+import java.awt.*;
+import java.awt.event.*;
+ 
+public class FeeWindow extends Frame {
+    private final TextField regNo = new TextField(15);
+    private final TextField amount = new TextField(10);
+    private final Button pay = new Button("Pay");
+    private final Button clear = new Button("Clear");
+    private final Button receipt = new Button("Receipt");
+    private final Label status = new Label("Enter fee details.");
+    private final FeeService service = new FeeService();
+ 
+    public FeeWindow() {
+        super("Student Fee Payment");
+        setLayout(new GridLayout(4, 2, 8, 8));
+        add(new Label("Registration number")); add(regNo);
+        add(new Label("Amount")); add(amount);
+        add(pay); add(clear); add(receipt); add(status);
+ 
+        pay.addActionListener(e -> {
+            pay.setEnabled(false);
+            // For a classroom-sized example this calls the service directly.
+            // In a production GUI, run this database operation in a worker thread.
+            status.setText(service.payFee(regNo.getText(), amount.getText()));
+            pay.setEnabled(true);
+        });
+ 
+        clear.addActionListener(e -> {
+            regNo.setText("");
+            amount.setText("");
+            status.setText("Fields cleared.");
+        });
+ 
+        receipt.addActionListener(e ->
+            status.setText("Receipt lookup should be performed using the saved payment ID."));
+ 
+        addWindowListener(new WindowAdapter() {
+            @Override public void windowClosing(WindowEvent e) {
+                dispose();
+            }
+        });
+        setSize(420, 220);
+        setVisible(true);
+    }
+ 
+    public static void main(String[] args) {
+        EventQueue.invokeLater(FeeWindow::new);
+    }
+}
