@@ -1,0 +1,72 @@
+import javax.swing.*;
+import java.awt.*;
+ 
+public class LibrarySearch extends JFrame {
+    private final JTextField searchField = new JTextField(22);
+    private final JComboBox<String> category =
+        new JComboBox<>(new String[]{"All", "Book", "Author", "Subject"});
+    private final JButton searchButton = new JButton("Search");
+    private final JButton prevButton = new JButton("Prev");
+    private final JButton nextButton = new JButton("Next");
+    private final JButton reserveButton = new JButton("Reserve");
+    private final JLabel status = new JLabel("Enter a search term.");
+    private final JTextArea results = new JTextArea();
+ 
+    public LibrarySearch() {
+        super("Campus Library Search");
+        setLayout(new BorderLayout(8, 8));
+ 
+        JPanel header = new JPanel(new BorderLayout());
+        JLabel title = new JLabel("Campus Library Search", JLabel.CENTER);
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 18f));
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        searchRow.add(new JLabel("Search:"));
+        searchRow.add(searchField);
+        searchRow.add(category);
+        searchRow.add(searchButton);
+        header.add(title, BorderLayout.NORTH);
+        header.add(searchRow, BorderLayout.SOUTH);
+ 
+        results.setEditable(false);
+        results.setText("Search results will appear here.");
+        add(header, BorderLayout.NORTH);
+        add(new JScrollPane(results), BorderLayout.CENTER);
+ 
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttons.add(prevButton);
+        buttons.add(nextButton);
+        buttons.add(reserveButton);
+ 
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.add(buttons, BorderLayout.NORTH);
+        footer.add(status, BorderLayout.SOUTH);
+        add(footer, BorderLayout.SOUTH);
+ 
+        searchButton.addActionListener(e -> search());
+        searchField.addActionListener(e -> search());
+        prevButton.addActionListener(e -> status.setText("Previous page selected."));
+        nextButton.addActionListener(e -> status.setText("Next page selected."));
+        reserveButton.addActionListener(e -> status.setText("Select a result before reserving."));
+ 
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setMinimumSize(new Dimension(520, 330));
+        setSize(700, 450);
+        setLocationRelativeTo(null);
+    }
+ 
+    private void search() {
+        String term = searchField.getText().trim();
+        if (term.isEmpty()) {
+            status.setText("Enter a search term.");
+            return;
+        }
+        results.setText("Search term: " + term +
+            "\\nCategory: " + category.getSelectedItem() +
+            "\\n\\nConnect this area to the library search service to display matching records.");
+        status.setText("Search request prepared.");
+    }
+ 
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new LibrarySearch().setVisible(true));
+    }
+}
